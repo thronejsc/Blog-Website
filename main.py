@@ -11,10 +11,12 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 # Import your forms from the forms.py
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
+import os
+import smtplib
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
+app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY')
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 gravatar = Gravatar(app,
@@ -26,6 +28,8 @@ gravatar = Gravatar(app,
                     use_ssl=False,
                     base_url=None)
 
+smtp_email = "tmacgravy21@gmail.com"
+password = "aoff xhhf hbel hotm"
 # TODO: Configure Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -41,7 +45,7 @@ class Base(DeclarativeBase):
     pass
 
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DB_URI", "sqlite:///posts.db")
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 
@@ -240,8 +244,21 @@ def about():
 
 @app.route("/contact")
 def contact():
-    return render_template("contact.html")
+    success_message = None
+    if request.method == "POST":
+        data = request.form
+        send_email(data['name'], data['email'], data['phone'], data['message'])
+        success_message = "Successfully sent your message"
+    return render_template('./contact.html', message=success_message)
+
+
+def send_email(name, email, phone, message):
+    with smtplib.SMTP("smtp.gmail.com", port=587) as connection:
+        connection.starttls()
+        connection.login(user=smtp_email, password=password)
+        connection.sendmail(from_addr=smtp_email, to_addrs=email, msg=f"Subject:Message from Blog Website\n\nName:{name}"
+                                                                      f"\nEmail: {email}\nPhone Number: {phone}\n Message: {message}")
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5002)
+    app.run(debug=False, port=5002)
